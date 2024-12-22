@@ -1,0 +1,152 @@
+client.on("messageCreate", async (message) => {
+  try {
+    if (message.type === "REPLY" && !message.reference?.messageId) {
+      return;
+    }
+
+    if (
+      !message.content.startsWith(`<@!${client.user.id}>`) &&
+      !message.content.startsWith(`<@${client.user.id}>`)
+    ) {
+      return;
+    }
+
+    let replyMessage;
+    if (message.type === "REPLY") {
+      try {
+        replyMessage = await message.fetchReference();
+      } catch (error) {
+        console.error("Failed to fetch the reference message:", error);
+        return;
+      }
+    }
+
+    if (!replyMessage) {
+      return;
+    }
+
+    const userIconUrl = replyMessage.author.displayAvatarURL({
+      format: "png",
+      dynamic: true,
+    });
+
+    let fontSize = 30;
+
+    const messageText = replyMessage.content;
+
+    if (messageText.length > 4) {
+      fontSize = 25;
+    }
+
+    if (messageText.length > 5) {
+      fontSize = 23;
+    }
+
+    if (messageText.length > 9) {
+      fontSize = 21;
+    }
+
+    if (messageText.length > 20) {
+      fontSize = 15;
+    }
+
+    if (messageText.length > 30) {
+      fontSize = 18;
+    }
+
+    if (messageText.length > 50) {
+      fontSize = 8;
+    }
+
+    if (messageText.length > 100) {
+      fontSize = 8;
+    }
+
+    if (messageText.length > 250) {
+      fontSize = 8;
+    }
+
+    const msg = await message.channel.messages.fetch(
+      message.reference.messageId
+    );
+
+    const { registerFont } = require("canvas");
+    const Canvas = require("canvas");
+    const { createCanvas, loadImage } = require("canvas");
+    const canvas = Canvas.createCanvas(800, 360);
+    const ctx = canvas.getContext("2d");
+
+    const background = await Canvas.loadImage(
+      "https://cdn.glitch.global/36c87154-8335-4d17-b106-7551b1b73ec4/bg.png?v=1704009022939"
+    );
+    ctx.drawImage(background, 0, 0, canvas.width, canvas.height);
+
+    ctx.font = "25px Noto";
+    ctx.fillStyle = "rgb(114,114,114)";
+    ctx.textAlign = "center";
+    ctx.fillText(`@${client.user.tag}`, canvas.width - 85, canvas.height - 10);
+    ctx.fillStyle = "#ffffff";
+    const replyMessageText = `${msg.content}`;
+    const userName = `${msg.author.displayName ?? msg.author.username}`;
+
+    ctx.fillStyle = "#ffffff";
+    ctx.font = `${fontSize}px Dela Gothic One`;
+    ctx.fillText(replyMessageText, canvas.width - 180, 200, 400);
+    ctx.textBaseline = "ideographic";
+    ctx.font = "bold 17px Segoe Print, sans-serif";
+    ctx.fillText(msg.author.tag, canvas.width - 180, 250, 400);
+    ctx.font = "bold 17px Segoe Print, sans-serif";
+    ctx.fillText(`-　${userName}`, canvas.width - 180, 225, 400);
+
+    const img = await Canvas.loadImage(userIconUrl);
+
+    const iconSize1 = 78;
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(130, 193, 330, 0, Math.PI * 2);
+    ctx.closePath();
+    ctx.clip();
+    ctx.drawImage(img, 0, 0, 387, canvas.height);
+    const gradient = ctx.createRadialGradient(130, 193, 0, 130, 193, 190);
+    gradient.addColorStop(0, "rgba(0,0,0,0)");
+    gradient.addColorStop(1, "rgba(0,0,0,1)");
+    ctx.fillStyle = gradient;
+    ctx.fill();
+    ctx.restore();
+
+    const attachment = new MessageAttachment(canvas.toBuffer(), "image.png");
+    const reply = await message.reply({ files: [attachment] });
+
+    const deleteButton = new MessageButton()
+      .setLabel("🗑削除する")
+      .setStyle("DANGER")
+      .setCustomId("delete_image");
+    const actionRow = new MessageActionRow().addComponents(deleteButton);
+    reply.edit({ components: [actionRow] });
+
+    const filter = (interaction) =>
+      interaction.customId === "delete_image" &&
+      interaction.user.id === message.author.id;
+    const collector = reply.createMessageComponentCollector({
+      filter,
+      time: 60000,
+    });
+    collector.on("collect", async (interaction) => {
+      await reply.delete();
+      const deletedEmbed = new MessageEmbed()
+        .setColor("#ff0000")
+        .setTitle("🗑Delete")
+        .setDescription(
+          `${interaction.user} がメッセージを削除しました。メッセージはメッセージ製作者のみ削除できるようになっています。`
+        );
+      message.reply({ embeds: [deletedEmbed] });
+    });
+    collector.on("end", async () => {
+      if (!reply.deleted) {
+        reply.edit({ components: [] });
+      }
+    });
+  } catch (e) {
+    console.log(e);
+  }
+});
